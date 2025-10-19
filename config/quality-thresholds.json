@@ -1,0 +1,107 @@
+{
+  "version": "2.0",
+  "last_updated": "2025-10-12",
+  "description": "Quality thresholds for filtering social media content by engagement",
+
+  "presets": {
+    "low": {
+      "description": "Capture most content, minimal filtering",
+      "instagram": {
+        "min_likes": 100,
+        "min_comments": 5,
+        "min_views": 500,
+        "engagement_rate_min": 1.0
+      },
+      "tiktok": {
+        "min_likes": 500,
+        "min_comments": 10,
+        "min_views": 5000,
+        "engagement_rate_min": 2.0
+      }
+    },
+    "medium": {
+      "description": "Balanced filtering for quality content",
+      "instagram": {
+        "min_likes": 500,
+        "min_comments": 20,
+        "min_views": 2000,
+        "engagement_rate_min": 3.0
+      },
+      "tiktok": {
+        "min_likes": 2000,
+        "min_comments": 50,
+        "min_views": 20000,
+        "engagement_rate_min": 4.0
+      }
+    },
+    "high": {
+      "description": "Only viral/trending content",
+      "instagram": {
+        "min_likes": 2000,
+        "min_comments": 100,
+        "min_views": 10000,
+        "engagement_rate_min": 5.0
+      },
+      "tiktok": {
+        "min_likes": 10000,
+        "min_comments": 200,
+        "min_views": 100000,
+        "engagement_rate_min": 6.0
+      }
+    }
+  },
+
+  "target_type_multipliers": {
+    "description": "Adjust thresholds based on target type",
+    "competitor": {
+      "multiplier": 0.5,
+      "note": "Lower threshold to capture most competitor content"
+    },
+    "influencer": {
+      "multiplier": 2.0,
+      "note": "Higher threshold - only their top performing content"
+    },
+    "hashtag": {
+      "multiplier": 1.5,
+      "note": "Medium-high threshold for hashtag monitoring"
+    }
+  },
+
+  "engagement_rate_calculation": {
+    "formula": "(likes + comments) / views * 100",
+    "instagram_formula": "(likes + comments * 10) / followers * 100",
+    "tiktok_formula": "(likes + comments + shares) / views * 100"
+  },
+
+  "validation_layers": {
+    "description": "Cost-effective content validation without Perplexity",
+    "layer_1_engagement": {
+      "cost": "FREE",
+      "method": "Calculate engagement rate from scraped metrics"
+    },
+    "layer_2_keyword_matching": {
+      "cost": "FREE",
+      "method": "Match caption/transcription against keyword list"
+    },
+    "layer_3_ai_analysis": {
+      "cost": "$0.0001-0.0005 per item",
+      "method": "GPT-4o-mini or Claude Haiku for relevance scoring",
+      "triggers": "Only for content passing layers 1-2"
+    }
+  },
+
+  "budget_controls": {
+    "max_monthly_budget": 50.00,
+    "estimated_cost_per_scrape": {
+      "instagram_profile": 0.01,
+      "instagram_hashtag": 0.02,
+      "tiktok_profile": 0.005,
+      "tiktok_hashtag": 0.01
+    },
+    "ai_validation_cost": {
+      "gpt4o_mini_per_item": 0.0001,
+      "claude_haiku_per_item": 0.00025,
+      "max_validations_per_month": 100000
+    }
+  }
+}

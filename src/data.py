@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+AIbrary TikTok Monitoring System - Data Layer
+Consolidated Lark Base integration and data models
+"""
+
+import requests
+import time
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+from core import (
+    MonitoringTarget, TikTokContent,
+    LARK_APP_ID, LARK_APP_SECRET, LARK_BASE_ID,
+    MONITORING_TARGETS_TABLE, TIKTOK_CONTENT_TABLE
+)
+
+class LarkClient:
+    """Client for interacting with Lark Base API"""
+
+    def __init__(self):
+        self.app_id = LARK_APP_ID
+        self.app_secret = LARK_APP_SECRET
+        self.base_id = LARK_BASE_ID
+        self.access_token = None
+        self.token_expires_at = 0
+
+    def _get_access_token(self) -> str:
+        """Get or refresh access token"""
+        if self.access_token and time.time() < self.token_expires_at:
+            return self.access_token
+
+        url = "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal"
+        payload = {
+            "app_id": self.app_id,
+            "app_secret": self.app_secret
+        }
+
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+        if data["code"] != 0:
+            raise Exception(f"Failed to get access token: {data}")
+
+        self.access_token = data["tenant_access_token"]
+        self.token_expires_at = time.time() + data["expire"] - 60
+
+        return self.access_token
+
+    def _make_request(self, method: str, path: str, payload: Optional[Dict] = None) -> Dict[str, Any]:
+        """Make authenticated request to Lark API"""
+        token = self._get_access_token()
+
+        url = f"https://open.larksuite.com/open-apis{path}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.request(method, url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+        if data["code"] != 0:
+            raise Exception(f"Lark API error: {data}")
+
+        return data["data"]
+
+    def _get_table_id(self, table_name: str) -> str:
+        """Get table ID by name"""
+        path = f"/bitable/v1/apps/{self.base_id}/tables"
+        data = self._make_request("GET", path)
+
+        for table in data["items"]:
+            if table["name"] == table_name:
+                return table["table_id"]
+
+        raise Exception(f"Table '{table_name}' not found")
+
+    def get_active_targets(self) -> List[MonitoringTarget]:
+        """Get all active monitoring targets"""
+        table_id = self._get_table_id(MONITORING_TARGETS_TABLE)
+        path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records"
+
+        data = self._make_request("GET", path)
+        targets = []
+
+        for item in data["items"]:
+            fields = item["fields"]
+
+            # Only include active targets
+            if not fields.get("active", False):
+                continue
+
+            target = MonitoringTarget(
+                record_id=item["record_id"],
+                target_value=fields.get("target_value", ""),
+                platform=fields.get("platform", ""),
+                target_type=fields.get("target_type", ""),
+                active=fields.get("active", False),
+                results_limit=int(fields.get("results_limit", 10)),
+                team_notes=fields.get("team_notes", "")
+            )
+            targets.append(target)
+
+        return targets
+
+    def save_content(self, content_list: List[TikTokContent], target_record_id: str = None) -> bool:
+        """Save TikTok content to Lark table with target linkage"""
+        if not content_list:
+            return True
+
+        table_id = self._get_table_id(TIKTOK_CONTENT_TABLE)
+        path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records"
+
+        success_count = 0
+
+        for content in content_list:
+            # Calculate engagement rate
+            content.engagement_rate = content.calculate_engagement_rate()
+
+            # Build fields dict, omitting empty URL fields
+            fields = {
+                "content_id": float(content.content_id),  # Number field with formatter
+                "Target": [target_record_id] if target_record_id else [],  # Two-way link field - expects array of strings
+                "video_url": {"link": str(content.video_url)},  # URL field
+                "author_username": str(content.author_username) if content.author_username else "",  # Text field
+                "caption": str(content.caption[:500]) if content.caption else "",  # Text field
+                "likes": float(content.likes) if content.likes is not None else 0.0,  # Number field
+                "comments": float(content.comments) if content.comments is not None else 0.0,  # Number field
+                "views": float(content.views) if content.views is not None else 0.0,  # Number field
+                "engagement_rate": float(round(content.engagement_rate, 2)) if content.engagement_rate is not None else 0.0,  # Number field
+                "AI_Analysis": str(content.ai_analysis_result) if content.ai_analysis_result else "",  # Text field for AI results
+                # Note: target_value removed - redundant with Target link
+                # Note: Platform field is auto-calculated via lookup from Target
+            }
+
+            # Only add URL fields if they have valid URLs
+            if content.video_download_url:
+                fields["video_downlaod_url"] = {"link": str(content.video_download_url)}  # Note: field name has typo in Lark Base
+            if content.subtitle_url:
+                fields["subtitle_url"] = {"link": str(content.subtitle_url)}
+
+            record_data = {"fields": fields}
+
+            try:
+                self._make_request("POST", path, record_data)
+                success_count += 1
+                print(f"✅ Saved content: {content.content_id}")
+            except Exception as e:
+                print(f"❌ Failed to save content {content.content_id}: {e}")
+
+        print(f"📊 Saved {success_count}/{len(content_list)} content items")
+        return success_count == len(content_list)
+
+    def content_exists(self, content_id: str) -> bool:
+        """Check if content already exists in database"""
+        table_id = self._get_table_id(TIKTOK_CONTENT_TABLE)
+        path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records"
+
+        try:
+            data = self._make_request("GET", path)
+            for item in data["items"]:
+                if item["fields"].get("content_id") == content_id:
+                    return True
+            return False
+        except Exception:
+            return False

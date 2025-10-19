@@ -1,0 +1,6 @@
+platform,target_type,target,active,quality_threshold_preset,min_likes,min_comments,min_views,results_limit,notes
+instagram,profile,@example_competitor,true,medium,500,20,1000,10,Main competitor in AI space
+instagram,hashtag,#aipodcast,true,high,1000,50,5000,20,Track AI podcast trends
+tiktok,profile,@aicontentcreator,true,medium,1000,50,10000,15,Popular AI content creator
+tiktok,hashtag,#artificialintelligence,true,high,5000,100,50000,25,Viral AI content tracking
+instagram,profile,@techinnovator,true,low,200,10,500,10,Emerging competitor monitoring

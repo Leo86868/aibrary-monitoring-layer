@@ -1,0 +1,141 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-10-12",
+  "description": "Keyword lists for content relevance filtering (Layer 2 validation)",
+
+  "categories": {
+    "primary_ai_topics": {
+      "weight": 10,
+      "keywords": [
+        "artificial intelligence",
+        "AI",
+        "machine learning",
+        "ML",
+        "deep learning",
+        "neural network",
+        "ChatGPT",
+        "GPT",
+        "Claude",
+        "Gemini",
+        "LLM",
+        "large language model",
+        "generative AI",
+        "AI agent",
+        "automation",
+        "AGI"
+      ]
+    },
+
+    "content_creation": {
+      "weight": 8,
+      "keywords": [
+        "podcast",
+        "podcasting",
+        "audio",
+        "book",
+        "writing",
+        "content creation",
+        "content strategy",
+        "storytelling",
+        "publishing",
+        "audiobook"
+      ]
+    },
+
+    "tech_trends": {
+      "weight": 7,
+      "keywords": [
+        "tech trends",
+        "innovation",
+        "future of work",
+        "digital transformation",
+        "productivity",
+        "workflow",
+        "tools",
+        "software",
+        "tech stack",
+        "SaaS"
+      ]
+    },
+
+    "ai_applications": {
+      "weight": 9,
+      "keywords": [
+        "AI writing",
+        "AI assistant",
+        "AI tools",
+        "prompt engineering",
+        "RAG",
+        "vector database",
+        "embeddings",
+        "fine-tuning",
+        "AI workflow",
+        "AI automation",
+        "copilot",
+        "AI agent"
+      ]
+    },
+
+    "business_productivity": {
+      "weight": 6,
+      "keywords": [
+        "productivity hack",
+        "time management",
+        "efficiency",
+        "automation",
+        "business process",
+        "growth",
+        "scale",
+        "strategy",
+        "optimization"
+      ]
+    }
+  },
+
+  "negative_keywords": {
+    "description": "Keywords that indicate content should be filtered OUT",
+    "keywords": [
+      "scam",
+      "clickbait",
+      "fake",
+      "spam",
+      "pyramid scheme",
+      "get rich quick",
+      "unrelated topic",
+      "off-topic"
+    ]
+  },
+
+  "scoring_rules": {
+    "min_score_to_pass": 15,
+    "calculation": "Sum of (keyword_weight × occurrences) across all categories",
+    "bonus_multipliers": {
+      "title_match": 2.0,
+      "hashtag_match": 1.5,
+      "multiple_categories": 1.3
+    },
+    "penalties": {
+      "negative_keyword_found": -20,
+      "no_primary_match": -5
+    }
+  },
+
+  "examples": {
+    "high_score_caption": {
+      "text": "How I use ChatGPT and AI automation to create podcast content 10x faster! #AI #productivity",
+      "expected_score": 45,
+      "matches": ["ChatGPT", "AI", "automation", "podcast", "productivity"]
+    },
+    "low_score_caption": {
+      "text": "Just hanging out with friends today! #lifestyle #fun",
+      "expected_score": 0,
+      "matches": []
+    }
+  },
+
+  "usage_in_n8n": {
+    "function_node_logic": "See docs/architecture/cost-effective-validation.md for implementation",
+    "regex_patterns": "Keywords are case-insensitive, match whole words",
+    "normalization": "Convert text to lowercase before matching"
+  }
+}

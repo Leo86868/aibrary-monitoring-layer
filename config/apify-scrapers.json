@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-10-12",
+  "description": "Apify Actor configurations for Instagram and TikTok scraping",
+
+  "actors": {
+    "instagram": {
+      "actor_id": "apify/instagram-scraper",
+      "recommended": true,
+      "pricing": "~$0.01-0.02 per profile scrape",
+      "documentation": "https://apify.com/apify/instagram-scraper",
+
+      "input_template": {
+        "directUrls": [],
+        "resultsType": "posts",
+        "resultsLimit": 10,
+        "searchLimit": 1,
+        "addParentData": false
+      },
+
+      "use_cases": {
+        "scrape_profile_posts": {
+          "directUrls": ["https://www.instagram.com/{username}/"],
+          "resultsType": "posts",
+          "resultsLimit": 20
+        },
+        "scrape_hashtag": {
+          "directUrls": ["https://www.instagram.com/explore/tags/{hashtag}/"],
+          "resultsType": "posts",
+          "resultsLimit": 30
+        },
+        "scrape_reel_with_comments": {
+          "directUrls": ["https://www.instagram.com/reel/{reel_id}/"],
+          "resultsType": "comments",
+          "resultsLimit": 50
+        }
+      },
+
+      "output_fields": [
+        "id",
+        "type",
+        "shortCode",
+        "caption",
+        "hashtags",
+        "mentions",
+        "url",
+        "commentsCount",
+        "firstComment",
+        "latestComments",
+        "dimensionsHeight",
+        "dimensionsWidth",
+        "displayUrl",
+        "images",
+        "videoUrl",
+        "videoDuration",
+        "videoViewCount",
+        "videoPlayCount",
+        "likesCount",
+        "timestamp",
+        "ownerFullName",
+        "ownerUsername",
+        "ownerId"
+      ]
+    },
+
+    "tiktok": {
+      "actor_id": "clockworks/tiktok-scraper",
+      "recommended": true,
+      "pricing": "~$0.004-0.01 per video scrape",
+      "documentation": "https://apify.com/clockworks/tiktok-scraper",
+
+      "input_template": {
+        "profiles": [],
+        "hashtags": [],
+        "postURLs": [],
+        "resultsPerPage": 10,
+        "shouldDownloadVideos": false,
+        "shouldDownloadCovers": false,
+        "shouldDownloadSubtitles": false
+      },
+
+      "use_cases": {
+        "scrape_profile_videos": {
+          "profiles": ["@{username}"],
+          "resultsPerPage": 20,
+          "shouldDownloadVideos": false
+        },
+        "scrape_hashtag_videos": {
+          "hashtags": ["#{hashtag}"],
+          "resultsPerPage": 30,
+          "shouldDownloadVideos": false
+        },
+        "scrape_trending_videos": {
+          "postURLs": [],
+          "hashtags": ["#fyp", "#viral"],
+          "resultsPerPage": 50
+        }
+      },
+
+      "output_fields": [
+        "id",
+        "text",
+        "createTime",
+        "authorMeta.id",
+        "authorMeta.name",
+        "authorMeta.nickName",
+        "authorMeta.verified",
+        "authorMeta.signature",
+        "authorMeta.avatar",
+        "authorMeta.following",
+        "authorMeta.fans",
+        "authorMeta.heart",
+        "authorMeta.video",
+        "musicMeta.musicId",
+        "musicMeta.musicName",
+        "musicMeta.musicAuthor",
+        "musicMeta.musicOriginal",
+        "covers.default",
+        "covers.origin",
+        "covers.dynamic",
+        "webVideoUrl",
+        "videoMeta.height",
+        "videoMeta.width",
+        "videoMeta.duration",
+        "diggCount",
+        "shareCount",
+        "playCount",
+        "commentCount",
+        "downloaded",
+        "mentions",
+        "hashtags",
+        "effectStickers"
+      ]
+    }
+  },
+
+  "n8n_integration": {
+    "http_request_node": {
+      "method": "POST",
+      "url": "https://api.apify.com/v2/acts/{ACTOR_ID}/run-sync-get-dataset-items",
+      "authentication": "predefinedCredentialType",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "token": "={{$credentials.apifyApi.token}}",
+        "input": "={{$json.apify_input}}"
+      }
+    },
+    "note": "Use Apify credentials in n8n Credentials Manager. Never hardcode tokens."
+  },
+
+  "cost_optimization_tips": [
+    "Use resultsLimit wisely - fewer results = lower cost",
+    "Avoid downloading videos unless needed for transcription",
+    "Use shouldDownloadVideos: false for metadata-only scraping",
+    "Batch scraping is more efficient than individual requests",
+    "Monitor Apify dashboard for usage: https://console.apify.com/billing"
+  ]
+}

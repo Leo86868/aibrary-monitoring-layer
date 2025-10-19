@@ -1,0 +1,92 @@
+# AIbrary - Gitignore Configuration
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# API Keys and Credentials
+**/credentials/
+**/secrets/
+api-keys.json
+credentials.json
+.credentials
+
+# n8n specific
+.n8n/
+workflows/.secrets/
+
+# Lark/Feishu credentials
+lark-credentials.json
+feishu-*.json
+
+# Apify tokens
+apify-token.txt
+.apify/
+
+# AI Model API Keys
+openai-key.txt
+anthropic-key.txt
+perplexity-key.txt
+
+# Logs and runtime data
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Claude Code and Specify (sensitive data)
+.claude/
+.specify/memory/
+
+# Node modules (if using Node.js scripts)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Python virtual environments (if using Python)
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# Backup files
+*.bak
+*.backup
+*-backup.*
+
+# Data dumps and large files
+*.csv.bak
+data-dumps/
+exports/
+
+# Personal notes (if any)
+PERSONAL_NOTES.md
+TODO_PERSONAL.md
