@@ -10,8 +10,9 @@ from typing import List
 from datetime import datetime
 
 from core import MonitoringTarget, ProcessingResult
-from data import LarkClient
-from processing import ProcessorFactory
+from storage import LarkClient
+from scraping import ProcessorFactory
+from analysis import VideoAnalyzer, analyze_new_content
 
 class TikTokMonitor:
     """Main orchestrator for TikTok monitoring system"""
@@ -19,6 +20,7 @@ class TikTokMonitor:
     def __init__(self):
         self.lark_client = LarkClient()
         self.processor_factory = ProcessorFactory()
+        self.ai_analyzer = VideoAnalyzer()
 
     def run(self) -> bool:
         """Run the complete monitoring pipeline"""
@@ -127,8 +129,24 @@ class TikTokMonitor:
 
                 new_content_count += len(new_content)
 
-                # Save content with target linkage
+                # Step 4a: AI Analysis for new content
                 if new_content:
+                    print(f"🤖 Running AI analysis for {len(new_content)} new items from {result.target.target_value}...")
+
+                    # Analyze content with competitor intelligence focus
+                    analysis_results = self.ai_analyzer.batch_analyze(new_content, "competitor_intelligence")
+
+                    if analysis_results:
+                        print(f"   ✅ AI analysis completed for {len(analysis_results)} items")
+                        # Print full analysis
+                        for analysis in analysis_results:
+                            print(f"\n   📊 {analysis.content_id}: {analysis.content_type} | Strategic Score: {analysis.strategic_score}/10")
+                            print(f"   📝 Analysis: {analysis.general_analysis}")
+                            print(f"   💡 Insights: {analysis.strategic_insights}")
+                    else:
+                        print(f"   ⚠️ AI analysis failed or disabled")
+
+                    # Save content with target linkage and AI analysis
                     success = self.lark_client.save_content(new_content, result.target.record_id)
                     if not success:
                         all_success = False

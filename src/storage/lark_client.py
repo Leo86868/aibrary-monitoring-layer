@@ -1,18 +1,17 @@
-#!/usr/bin/env python3
 """
-AIbrary TikTok Monitoring System - Data Layer
-Consolidated Lark Base integration and data models
+AIbrary TikTok Monitoring System - Lark Client
+Client for interacting with Lark Base API
 """
 
 import requests
 import time
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from core import (
     MonitoringTarget, TikTokContent,
     LARK_APP_ID, LARK_APP_SECRET, LARK_BASE_ID,
     MONITORING_TARGETS_TABLE, TIKTOK_CONTENT_TABLE
 )
+
 
 class LarkClient:
     """Client for interacting with Lark Base API"""
@@ -105,8 +104,64 @@ class LarkClient:
 
         return targets
 
+    def content_exists(self, content_id: str) -> Optional[str]:
+        """
+        Check if content already exists in database
+        Returns record_id if exists, None otherwise
+        """
+        table_id = self._get_table_id(TIKTOK_CONTENT_TABLE)
+        path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records"
+
+        try:
+            data = self._make_request("GET", path)
+            for item in data["items"]:
+                if str(item["fields"].get("content_id")) == str(content_id):
+                    return item["record_id"]
+            return None
+        except Exception:
+            return None
+
+    def update_content(self, record_id: str, content: TikTokContent) -> bool:
+        """
+        Update existing content record with new analysis data (Phase 5)
+        """
+        table_id = self._get_table_id(TIKTOK_CONTENT_TABLE)
+        path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records/{record_id}"
+
+        # Build update fields (only AI analysis fields)
+        fields = {}
+
+        if content.ai_analysis_result:
+            fields["Analysis"] = str(content.ai_analysis_result)
+
+        if content.strategic_score is not None:
+            fields["strategic_score"] = float(content.strategic_score)
+
+        if content.content_type:
+            fields["content_type"] = str(content.content_type)
+
+        if content.strategic_insights:
+            fields["strategic_insights"] = str(content.strategic_insights)
+
+        if not fields:
+            print(f"⚠️ No fields to update for content {content.content_id}")
+            return False
+
+        update_data = {"fields": fields}
+
+        try:
+            self._make_request("PUT", path, update_data)
+            print(f"✅ Updated content: {content.content_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to update content {content.content_id}: {e}")
+            return False
+
     def save_content(self, content_list: List[TikTokContent], target_record_id: str = None) -> bool:
-        """Save TikTok content to Lark table with target linkage"""
+        """
+        Save or update TikTok content to Lark table with target linkage
+        Phase 5: Check if exists, update if so, create if not
+        """
         if not content_list:
             return True
 
@@ -116,12 +171,22 @@ class LarkClient:
         success_count = 0
 
         for content in content_list:
+            # Phase 5: Check if content already exists
+            existing_record_id = self.content_exists(content.content_id)
+
+            if existing_record_id:
+                # Update existing record
+                if self.update_content(existing_record_id, content):
+                    success_count += 1
+                continue
+
+            # Create new record
             # Calculate engagement rate
             content.engagement_rate = content.calculate_engagement_rate()
 
             # Build fields dict, omitting empty URL fields
             fields = {
-                "content_id": float(content.content_id),  # Number field with formatter
+                "content_id": str(content.content_id),  # Text field - preserves full TikTok ID precision
                 "Target": [target_record_id] if target_record_id else [],  # Two-way link field - expects array of strings
                 "video_url": {"link": str(content.video_url)},  # URL field
                 "author_username": str(content.author_username) if content.author_username else "",  # Text field
@@ -130,10 +195,16 @@ class LarkClient:
                 "comments": float(content.comments) if content.comments is not None else 0.0,  # Number field
                 "views": float(content.views) if content.views is not None else 0.0,  # Number field
                 "engagement_rate": float(round(content.engagement_rate, 2)) if content.engagement_rate is not None else 0.0,  # Number field
-                "AI_Analysis": str(content.ai_analysis_result) if content.ai_analysis_result else "",  # Text field for AI results
-                # Note: target_value removed - redundant with Target link
-                # Note: Platform field is auto-calculated via lookup from Target
+                "Analysis": str(content.ai_analysis_result) if content.ai_analysis_result else "",  # Text field for AI results
             }
+
+            # Add simplified strategic AI analysis fields if available
+            if content.strategic_score is not None:
+                fields["strategic_score"] = float(content.strategic_score)
+            if content.content_type:
+                fields["content_type"] = str(content.content_type)
+            if content.strategic_insights:
+                fields["strategic_insights"] = str(content.strategic_insights)
 
             # Only add URL fields if they have valid URLs
             if content.video_download_url:
@@ -152,17 +223,3 @@ class LarkClient:
 
         print(f"📊 Saved {success_count}/{len(content_list)} content items")
         return success_count == len(content_list)
-
-    def content_exists(self, content_id: str) -> bool:
-        """Check if content already exists in database"""
-        table_id = self._get_table_id(TIKTOK_CONTENT_TABLE)
-        path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records"
-
-        try:
-            data = self._make_request("GET", path)
-            for item in data["items"]:
-                if item["fields"].get("content_id") == content_id:
-                    return True
-            return False
-        except Exception:
-            return False

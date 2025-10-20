@@ -1,45 +1,14 @@
-#!/usr/bin/env python3
 """
-AIbrary TikTok Monitoring System - Core Module
-Consolidated data models, configuration, and utilities
+AIbrary TikTok Monitoring System - Data Models
+Core data structures for the monitoring system
 """
 
-import os
-import time
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from dotenv import load_dotenv
 
 # ==============================================================================
-# CONFIGURATION
-# ==============================================================================
-
-# Load .env from config directory
-config_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config')
-env_path = os.path.join(config_dir, '.env')
-load_dotenv(env_path)
-
-# Lark API Configuration
-LARK_APP_ID = os.getenv('LARK_APP_ID', 'cli_a860785f5078100d')
-LARK_APP_SECRET = os.getenv('LARK_APP_SECRET', 'sfH5BBpCd6tTeqfPB1FRlhV3JQ6M723A')
-LARK_BASE_ID = os.getenv('LARK_BASE_ID', 'Qr40bFHf8aKpBosZjXbcjF4rnXe')
-
-# Apify Configuration
-APIFY_TOKEN = os.getenv('APIFY_TOKEN')
-TIKTOK_ACTOR_ID = os.getenv('TIKTOK_ACTOR_ID', 'GdWCkxBtKWOsKjdch')
-
-# Table Names
-MONITORING_TARGETS_TABLE = 'Monitoring_Targets'
-TIKTOK_CONTENT_TABLE = 'TikTok_Content'
-
-# Processing Configuration
-DEFAULT_TIMEOUT = 600  # 10 minutes
-MAX_RETRIES = 3
-RATE_LIMIT_DELAY = 1  # seconds between requests
-
-# ==============================================================================
-# DATA MODELS
+# MONITORING MODELS
 # ==============================================================================
 
 @dataclass
@@ -87,6 +56,11 @@ class TikTokContent:
     ai_analysis_result: Optional[str] = ""
     video_analyzed: bool = False
 
+    # Strategic AI Analysis Fields (simplified for competitor intelligence)
+    strategic_score: Optional[int] = None  # 0-10: Combined relevance + quality score for competitive value
+    content_type: Optional[str] = None  # Controlled list: book_content, learning_feature, educational_value, etc.
+    strategic_insights: Optional[str] = None  # Numbered insights (1-3 points) on competitive intelligence
+
     def __post_init__(self):
         if self.discovered_date is None:
             self.discovered_date = datetime.now()
@@ -105,3 +79,18 @@ class ProcessingResult:
     content_found: List[TikTokContent]
     error_message: Optional[str] = None
     processing_time: Optional[float] = None
+
+# ==============================================================================
+# AI ANALYSIS MODELS
+# ==============================================================================
+
+@dataclass
+class AnalysisResult:
+    """Result of AI analysis on TikTok content"""
+    content_id: str
+    summary: str  # General content description (Stage 1)
+    general_analysis: Optional[str] = None  # Detailed Stage 1 analysis
+    strategic_score: Optional[int] = None  # 0-10 combined score
+    content_type: Optional[str] = None  # Controlled category
+    strategic_insights: Optional[str] = None  # Numbered insights
+    error: Optional[str] = None

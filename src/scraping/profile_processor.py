@@ -1,55 +1,17 @@
-#!/usr/bin/env python3
 """
-AIbrary TikTok Monitoring System - Processing Layer
-Consolidated TikTok scraping and content processing
+AIbrary TikTok Monitoring System - Profile Processor
+Processor for TikTok user profiles (@username)
 """
 
 import time
 import re
 import requests
-from abc import ABC, abstractmethod
 from typing import List, Optional
+from datetime import datetime, timedelta
+
 from core import MonitoringTarget, TikTokContent, ProcessingResult, APIFY_TOKEN, TIKTOK_ACTOR_ID, DEFAULT_TIMEOUT
+from .base import BaseProcessor
 
-# ==============================================================================
-# BASE PROCESSOR
-# ==============================================================================
-
-class BaseProcessor(ABC):
-    """Abstract base class for all target processors"""
-
-    @abstractmethod
-    def can_process(self, target: MonitoringTarget) -> bool:
-        """Check if this processor can handle the given target"""
-        pass
-
-    @abstractmethod
-    def process(self, target: MonitoringTarget) -> ProcessingResult:
-        """Process the target and return results"""
-        pass
-
-    def _create_success_result(self, target: MonitoringTarget, content: List[TikTokContent], processing_time: float = None) -> ProcessingResult:
-        """Helper to create successful processing result"""
-        return ProcessingResult(
-            target=target,
-            success=True,
-            content_found=content,
-            processing_time=processing_time
-        )
-
-    def _create_error_result(self, target: MonitoringTarget, error_message: str, processing_time: float = None) -> ProcessingResult:
-        """Helper to create error processing result"""
-        return ProcessingResult(
-            target=target,
-            success=False,
-            content_found=[],
-            error_message=error_message,
-            processing_time=processing_time
-        )
-
-# ==============================================================================
-# PROFILE PROCESSOR (WORKING)
-# ==============================================================================
 
 class ProfileProcessor(BaseProcessor):
     """Processor for TikTok user profiles (@username)"""
@@ -116,24 +78,35 @@ class ProfileProcessor(BaseProcessor):
         return {
             "profiles": [f"@{username}"],
             "resultsPerPage": target.results_limit,
+            "profileScrapeSections": ["videos"],  # Only scrape videos section
             "shouldDownloadVideos": True,  # Download videos for AI analysis
             "shouldDownloadCovers": True,  # Download thumbnails for visual reference
             "shouldDownloadSubtitles": True,  # Download subtitles to avoid needing Whisper transcription
+            "shouldDownloadSlideshowImages": False,  # Filter out photo carousels, only get actual videos
             "proxyConfiguration": {"useApifyProxy": True}
         }
 
     def _process_dataset_items(self, dataset_items, target: MonitoringTarget) -> List[TikTokContent]:
         """Process dataset items directly into TikTokContent objects"""
         content_list = []
+        slideshow_count = 0
 
         for item in dataset_items:
             try:
+                # Filter out photo slideshows - only process actual videos
+                if item.get("isSlideshow", False):
+                    slideshow_count += 1
+                    continue
+
                 content = self._convert_item_to_content(item, target)
                 if content:
                     content_list.append(content)
             except Exception as e:
                 print(f"⚠️ Failed to process item: {e}")
                 continue
+
+        if slideshow_count > 0:
+            print(f"   ⏭️ Filtered out {slideshow_count} photo slideshow(s)")
 
         return content_list
 
@@ -161,8 +134,10 @@ class ProfileProcessor(BaseProcessor):
         media_urls = item.get("mediaUrls", [])
         video_download_url = media_urls[0] if media_urls else ""
 
-        # Skip cover URL for now (you said we don't need it)
-        # cover_url = video_meta.get("coverUrl", "")
+        # Debug: Print what we got
+        print(f"   🔍 DEBUG - Content {content_id}:")
+        print(f"      mediaUrls: {media_urls}")
+        print(f"      video_download_url: {video_download_url}")
 
         # Get subtitle URL from videoMeta.subtitleLinks (first English or available language)
         subtitle_links = video_meta.get("subtitleLinks", [])
@@ -239,7 +214,6 @@ class ProfileProcessor(BaseProcessor):
             run_id = recent_run["id"]
 
             # Check if it's recent enough (within last hour)
-            from datetime import datetime, timedelta
             run_time = datetime.fromisoformat(recent_run["finishedAt"].replace('Z', '+00:00'))
             if datetime.now().astimezone() - run_time > timedelta(hours=1):
                 print(f"⏰ Most recent run is {run_time}, too old - will run fresh actor")
@@ -301,60 +275,3 @@ class ProfileProcessor(BaseProcessor):
                     return 0
 
         return 0
-
-# ==============================================================================
-# FUTURE PROCESSORS (STUBS)
-# ==============================================================================
-
-class HashtagProcessor(BaseProcessor):
-    """Processor for TikTok hashtags (#hashtag) - Phase 2"""
-
-    def can_process(self, target: MonitoringTarget) -> bool:
-        return target.is_hashtag and target.platform == "tiktok"
-
-    def process(self, target: MonitoringTarget) -> ProcessingResult:
-        return self._create_error_result(
-            target,
-            "Hashtag processing not implemented yet. Coming in Phase 2!"
-        )
-
-class SearchProcessor(BaseProcessor):
-    """Processor for TikTok keyword searches - Phase 3"""
-
-    def can_process(self, target: MonitoringTarget) -> bool:
-        return target.is_search and target.platform == "tiktok"
-
-    def process(self, target: MonitoringTarget) -> ProcessingResult:
-        return self._create_error_result(
-            target,
-            "Search processing not implemented yet. Coming in Phase 3!"
-        )
-
-# ==============================================================================
-# PROCESSOR FACTORY
-# ==============================================================================
-
-class ProcessorFactory:
-    """Factory for creating appropriate processors for different target types"""
-
-    def __init__(self):
-        self.processors = [
-            ProfileProcessor(),
-            HashtagProcessor(),
-            SearchProcessor()
-        ]
-
-    def get_processor(self, target: MonitoringTarget) -> Optional[BaseProcessor]:
-        """Get the appropriate processor for a target"""
-        for processor in self.processors:
-            if processor.can_process(target):
-                return processor
-        return None
-
-    def get_supported_targets(self, targets: List[MonitoringTarget]) -> List[MonitoringTarget]:
-        """Filter targets to only those that have available processors"""
-        return [target for target in targets if self.get_processor(target)]
-
-    def get_unsupported_targets(self, targets: List[MonitoringTarget]) -> List[MonitoringTarget]:
-        """Filter targets to only those that don't have available processors"""
-        return [target for target in targets if not self.get_processor(target)]

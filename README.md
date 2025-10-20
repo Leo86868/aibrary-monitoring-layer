@@ -26,10 +26,12 @@ python3 run_processor.py
 ## 🎯 What is AIbrary?
 
 A **working TikTok competitor intelligence system** that automatically:
-- ✅ **Scrapes @openai TikTok profile** (10 videos in 8.6s)
-- ✅ **Scalable processor architecture** for profiles, hashtags, search
+- ✅ **Scrapes TikTok content** via Apify integration
+- ✅ **AI Video Analysis** using Gemini 2.5 Flash multimodal capabilities
+- ✅ **Competitor Intelligence** focused on strategic insights
+- ✅ **Modular Architecture** (core, scraping, analysis, storage)
 - ✅ **Lark Base integration** for team collaboration
-- ✅ **Cost-optimized** processing under $50/month
+- ✅ **Phase 5 Update Logic** (no duplicate records)
 - ✅ **SpecKit compliant** specification-driven development
 
 ---
@@ -41,25 +43,37 @@ A **working TikTok competitor intelligence system** that automatically:
 ```
 📥 LARK INPUT
   └─ Monitoring_Targets table
-     → @openai (active, results_limit: 10)
+     → @openai, @blinkist_app, @headway.app (active)
 
      ↓
 
-⚡ PYTHON PROCESSOR
+⚡ SCRAPING MODULE (src/scraping/)
   ├─ ProfileProcessor (@username) ✅ WORKING
-  ├─ HashtagProcessor (#hashtag) → Phase 2
-  └─ SearchProcessor (keywords) → Phase 3
+  └─ Apify TikTok Actor Integration
 
      ↓
 
-📊 APIFY INTEGRATION
-  └─ Synchronous API call → 10 videos in 8.6s
+🤖 ANALYSIS MODULE (src/analysis/)
+  ├─ Video Download (from Apify URLs)
+  ├─ Gemini 2.5 Flash Multimodal Analysis
+  ├─ Visual + Audio Content Understanding
+  └─ Competitor Intelligence Focus
+
+     ↓
+
+💾 STORAGE MODULE (src/storage/)
+  ├─ Phase 5 Update Logic (no duplicates)
+  └─ Lark Base Integration
 
      ↓
 
 📤 LARK OUTPUT
   └─ TikTok_Content table
      → Engagement metrics, URLs, captions
+     → AI Analysis (general + strategic)
+     → Strategic Score (0-10)
+     → Content Type (9 categories)
+     → Strategic Insights (numbered)
 ```
 
 ### Scalable Foundation
@@ -78,25 +92,36 @@ AIbrary/
 ├── .specify/                    # SpecKit specification framework
 │   ├── memory/                  # Project context and principles
 │   ├── specs/                   # Feature specifications
+│   │   ├── 000-lark-foundation/ # Foundation spec
+│   │   ├── 001-tiktok-monitoring/ # TikTok monitoring spec
+│   │   └── 002-two-stage-ai/   # Two-stage AI analysis spec
 │   └── progress/                # Development tracking
 │
-├── src/                         # Source code (Python application)
-│   ├── processors/              # Target processors
-│   │   ├── profile_processor.py # ✅ Profile scraping (implemented)
-│   │   ├── hashtag_processor.py # → Hashtag scraping (Phase 2)
-│   │   └── search_processor.py  # → Search scraping (Phase 3)
-│   ├── models.py               # Data models
-│   ├── lark_client.py          # Lark Base integration
-│   └── tiktok_processor.py     # Main application
+├── src/                         # Modular source code
+│   ├── core/                   # Shared models and config
+│   │   ├── models.py           # Data structures
+│   │   └── config.py           # Environment configuration
+│   │
+│   ├── scraping/               # Content acquisition
+│   │   ├── profile_processor.py # Profile scraping via Apify
+│   │   └── processor_factory.py # Processor routing
+│   │
+│   ├── analysis/               # AI analysis
+│   │   ├── video_analyzer.py  # Gemini video analysis
+│   │   ├── prompts.py          # AI prompts
+│   │   └── parsers.py          # Response parsing
+│   │
+│   ├── storage/                # Data persistence
+│   │   └── lark_client.py      # Lark Base integration
+│   │
+│   └── monitor.py              # Main orchestrator
 │
 ├── config/                      # Configuration
-│   ├── .env                    # Environment variables
-│   └── *.json                 # Structured configuration
+│   └── .env                    # Environment variables (gitignored)
 │
-├── scripts/                     # Utility scripts
-│   ├── node/                   # Lark setup scripts
-│   └── python/                 # Python utilities
-│
+├── test_*.py                    # Phase testing scripts
+└── CHANGELOG.md                # Version history
+```
 ├── docs/                        # Documentation
 │   ├── setup/                  # Setup guides
 │   ├── logs/                   # Output logs
