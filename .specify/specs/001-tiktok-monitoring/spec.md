@@ -37,11 +37,27 @@ This specification covers the TikTok-specific implementation details for the AIb
 - **Foundation**: `../000-lark-foundation/` - Lark setup and API configuration
 - **Credentials**: App ID `cli_a860785f5078100d`, Base `Qr40bFHf8aKpBosZjXbcjF4rnXe`
 
+## Monitoring Strategy Classification
+
+Content is classified by monitoring strategy to enable strategy-specific analysis and filtering:
+
+**Strategy Types:**
+- **Competitor Intelligence**: Profile-based tracking of specific companies (@openai, @blinkist_app, @headway.app)
+- **Trend Discovery**: Hashtag/viral content identification (future)
+- **Niche Deep-Dive**: Specialized community tracking (future)
+
+**Implementation:**
+- `monitoring_strategy` field added to Monitoring Targets table (Single Select)
+- Propagates to TikTok Content table via Lookup field through Target link
+- Lookup condition: `target_value is Target` (follows link relationship)
+
+**Current Focus:** Competitor Intelligence strategy is fully implemented with tailored AI analysis prompts (see Feature 002).
+
 ## Current Status
 
-**Ready for Implementation**: All table schemas designed, implementation tasks defined.
+**Status**: Competitor Intelligence strategy complete and operational.
 
-**Next Step**: Execute `tasks.md` to create Lark tables and test with first competitor target.
+**Next Steps**: Implement Trend Discovery and Niche Deep-Dive strategies when needed.
 
 ## Key Features
 
@@ -50,5 +66,6 @@ This specification covers the TikTok-specific implementation details for the AIb
 - Team collaboration features (flags, notes, assignments)
 - Strategic value scoring (competitive intel, trend signals)
 - Scalable filtering and processing rules
+- Strategy-based content classification
 
 **See `comprehensive-database-v1.md` for complete technical specifications.**

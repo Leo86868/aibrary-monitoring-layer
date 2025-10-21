@@ -107,6 +107,20 @@ System updates existing content records with new analysis instead of creating du
 - **SC-005**: Content_type parsing success rate improves to 95% for standard categories
 - **SC-006**: Analysis completion time under 10 seconds per content item including database save
 
+## Monitoring Strategy Context
+
+**Current Scope:** This feature is optimized for **Competitor Intelligence** monitoring strategy.
+
+The `COMPETITOR_INTELLIGENCE_PROMPT` in `src/analysis/prompts.py` is tailored for:
+- Profile-based content from direct competitors (@openai, @blinkist_app, @headway.app)
+- Topic relevance + execution quality scoring
+- Marketing tactics analysis (what→why→try structure)
+
+**Future Strategies:** When implementing Trend Discovery or Niche Deep-Dive strategies:
+- Add strategy-specific prompts to `src/analysis/prompts.py`
+- Implement prompt routing based on `monitoring_strategy` field in content
+- Each strategy may need different scoring criteria and insight focus
+
 ## Assumptions
 
 - AIbrary's competitive focus is on book/learning apps (Blinkist, Headway) not general AI companies

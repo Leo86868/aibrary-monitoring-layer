@@ -107,9 +107,21 @@
 - [x] T032 [P] End-to-end pipeline test with mock data (Phase 1-4 test scripts) ✅
 - [x] T033 [P] Database schema validation - all strategic fields saving correctly ✅
 - [x] T034 [P] Fix content_id precision issue (changed to Text field in Lark Base) ✅
-- [ ] T035 [P] Integration test using monitoring pipeline with real Apify scraping (blocked: Apify down)
-- [ ] T036 [P] Performance test - video analysis takes 60-90s per video (acceptable for quality)
-- [ ] T037 [P] Prompt refinement - improve analysis output format (TODO)
+- [x] T035 [P] Integration test using monitoring pipeline with real Apify scraping ✅
+- [x] T036 [P] Performance test - video analysis takes 60-90s per video (acceptable for quality) ✅
+- [x] T037 [P] Prompt refinement - improve analysis output format ✅
+- [x] T038 [P] Fix strategic score parser regex bug (was defaulting all scores to 5) ✅
+
+**Checkpoint**: Full end-to-end pipeline validated with real data ✅
+
+**Tools Created**:
+- `test_prompt_refinement.py` - Test prompts with real data without modifying production
+- `run_analysis_only.py` - Re-analyze existing content without re-scraping
+
+**Key Improvements**:
+- **Prompt Quality**: Reduced jargon, added what→why→try structure for insights, focused on marketing tactics
+- **Parser Fix**: Corrected regex from `**strategic score**` to `**Score:**` - resolved all-scores-5 bug
+- **Score Distribution**: Now seeing real variation (3-9 range) instead of everything defaulting to 5
 
 ---
 

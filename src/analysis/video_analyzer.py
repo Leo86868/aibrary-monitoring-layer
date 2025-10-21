@@ -1,6 +1,18 @@
 """
 AIbrary TikTok Monitoring System - Video Analyzer
 Main AI analysis engine for TikTok content
+
+Current Implementation:
+- Uses COMPETITOR_INTELLIGENCE_PROMPT for all content
+- Optimized for Competitor Intelligence monitoring strategy
+
+Future Enhancement:
+- Add prompt routing based on content.monitoring_strategy field
+- STRATEGY_PROMPTS = {
+    "competitor_intelligence": COMPETITOR_INTELLIGENCE_PROMPT,
+    "trend_discovery": TREND_DISCOVERY_PROMPT,  # future
+    "niche_deepdive": NICHE_DEEPDIVE_PROMPT,    # future
+  }
 """
 
 import requests
@@ -33,18 +45,37 @@ class VideoAnalyzer:
 
     def analyze_content(self, content: TikTokContent, analysis_type: str = "competitor_intelligence") -> Optional[AnalysisResult]:
         """
-        Analyze TikTok content using available data
+        Analyze TikTok content using available data based on monitoring strategy
         Priority: Subtitles > Video > Caption only
+
+        Routes to strategy-specific analysis based on content.monitoring_strategy field:
+        - "Competitor Intelligence" → Analyze with competitor intelligence prompt
+        - "Trend Discovery" → Skip (prompt not implemented yet)
+        - "Niche Deep-Dive" → Skip (prompt not implemented yet)
+        - None/Unknown → Skip with warning
         """
         if not self.model:
             return None
 
         try:
-            if analysis_type == "competitor_intelligence":
+            # Get monitoring strategy from content (populated via Lark Base lookup)
+            strategy = content.monitoring_strategy
+
+            # Route based on monitoring strategy
+            if strategy == "Competitor Intelligence":
                 return self._analyze_competitor_intelligence(content)
+            elif strategy == "Trend Discovery":
+                print(f"   ⏭️  {content.content_id} (Trend Discovery) - skipping (prompt not implemented)")
+                return None
+            elif strategy == "Niche Deep-Dive":
+                print(f"   ⏭️  {content.content_id} (Niche Deep-Dive) - skipping (prompt not implemented)")
+                return None
+            elif strategy is None or strategy == "":
+                print(f"   ⚠️  {content.content_id} - No monitoring strategy, skipping analysis")
+                return None
             else:
-                # Legacy general analysis
-                return self._analyze_general(content)
+                print(f"   ⚠️  {content.content_id} - Unknown strategy '{strategy}', skipping")
+                return None
 
         except Exception as e:
             print(f"❌ AI analysis failed for {content.content_id}: {e}")
@@ -199,16 +230,49 @@ Pay attention to:
             return None
 
     def batch_analyze(self, content_list: List[TikTokContent], analysis_type: str = "competitor_intelligence") -> List[AnalysisResult]:
-        """Analyze multiple content items with competitor intelligence focus"""
+        """
+        Analyze multiple content items with strategy-aware routing
+        Tracks and reports metrics by monitoring strategy
+        """
         results = []
 
+        # Track counts by strategy
+        strategy_counts = {
+            "Competitor Intelligence": {"analyzed": 0, "skipped": 0},
+            "Trend Discovery": {"analyzed": 0, "skipped": 0},
+            "Niche Deep-Dive": {"analyzed": 0, "skipped": 0},
+            "Unknown": {"analyzed": 0, "skipped": 0}
+        }
+
         for content in content_list:
-            print(f"🤖 Analyzing content: {content.content_id}")
+            strategy = content.monitoring_strategy or "Unknown"
+            strategy_label = strategy if strategy in strategy_counts else "Unknown"
+
+            print(f"🤖 Analyzing {content.content_id} ({strategy_label})...")
             result = self.analyze_content(content, analysis_type)
+
             if result:
                 results.append(result)
+                strategy_counts[strategy_label]["analyzed"] += 1
                 # Update content with analysis results
                 self._update_content_with_analysis(content, result)
+            else:
+                strategy_counts[strategy_label]["skipped"] += 1
+
+        # Print summary report
+        print(f"\n📊 Analysis complete:")
+        total_analyzed = sum(s["analyzed"] for s in strategy_counts.values())
+        total_skipped = sum(s["skipped"] for s in strategy_counts.values())
+
+        for strategy_name, counts in strategy_counts.items():
+            if counts["analyzed"] > 0:
+                print(f"   ✅ {strategy_name}: {counts['analyzed']} analyzed")
+            if counts["skipped"] > 0:
+                status = "⏭️ " if strategy_name in ["Trend Discovery", "Niche Deep-Dive"] else "⚠️ "
+                reason = "(awaiting prompt)" if strategy_name in ["Trend Discovery", "Niche Deep-Dive"] else "(no strategy)"
+                print(f"   {status}{strategy_name}: {counts['skipped']} skipped {reason}")
+
+        print(f"   📈 Total: {total_analyzed} analyzed, {total_skipped} skipped")
 
         return results
 

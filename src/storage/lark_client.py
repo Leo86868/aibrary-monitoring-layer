@@ -91,6 +91,13 @@ class LarkClient:
             if not fields.get("active", False):
                 continue
 
+            # Decode monitoring_strategy from Lark single-select field
+            raw_strategy = fields.get("monitoring_strategy", None)
+            strategy_text = None
+            if raw_strategy and isinstance(raw_strategy, list) and len(raw_strategy) > 0:
+                # Lark returns single-select as list with text value
+                strategy_text = raw_strategy[0].get("text") if isinstance(raw_strategy[0], dict) else raw_strategy[0]
+
             target = MonitoringTarget(
                 record_id=item["record_id"],
                 target_value=fields.get("target_value", ""),
@@ -98,6 +105,7 @@ class LarkClient:
                 target_type=fields.get("target_type", ""),
                 active=fields.get("active", False),
                 results_limit=int(fields.get("results_limit", 10)),
+                monitoring_strategy=strategy_text,
                 team_notes=fields.get("team_notes", "")
             )
             targets.append(target)

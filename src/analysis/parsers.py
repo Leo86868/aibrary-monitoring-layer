@@ -26,8 +26,8 @@ def parse_competitor_intelligence_response(content_id: str, response_text: str) 
 
     # Extract Stage 2 Strategic Fields
 
-    # Strategic Score - pattern: "**Strategic Score (0-10):** 8"
-    score_match = re.search(r'\*\*strategic score.*?\*\*\s*(\d+)', response_text, re.IGNORECASE)
+    # Strategic Score - pattern: "**Score:** 8/10"
+    score_match = re.search(r'\*\*score:\*\*\s*(\d+)', response_text, re.IGNORECASE)
     if score_match:
         strategic_score = min(int(score_match.group(1)), 10)
 

@@ -20,6 +20,7 @@ class MonitoringTarget:
     target_type: str  # "profile", "hashtag", "search", "trend"
     active: bool
     results_limit: int
+    monitoring_strategy: Optional[str] = None  # "Competitor Intelligence", "Trend Discovery", "Niche Deep-Dive"
     team_notes: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
 
@@ -60,6 +61,12 @@ class TikTokContent:
     strategic_score: Optional[int] = None  # 0-10: Combined relevance + quality score for competitive value
     content_type: Optional[str] = None  # Controlled list: book_content, learning_feature, educational_value, etc.
     strategic_insights: Optional[str] = None  # Numbered insights (1-3 points) on competitive intelligence
+
+    # Monitoring Strategy Classification (lookup field from Target table)
+    # Auto-populated via Lark Base lookup from Monitoring Targets table
+    # Values: "Competitor Intelligence", "Trend Discovery", "Niche Deep-Dive"
+    # Used for routing to strategy-specific AI analysis prompts
+    monitoring_strategy: Optional[str] = None
 
     def __post_init__(self):
         if self.discovered_date is None:

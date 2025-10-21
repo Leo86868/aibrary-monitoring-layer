@@ -46,16 +46,22 @@ class TikTokMonitor:
                 print("❌ No supported targets found")
                 return False
 
-            # Step 3: Process each supported target
+            # Step 3: Process each supported target (scrape only)
             results = self._process_targets(supported_targets)
 
-            # Step 4: Save results to Lark
-            success = self._save_results(results)
+            # Step 4: Save raw scraped content to Lark
+            save_success = self._save_results(results)
 
-            # Step 5: Summary
+            if not save_success:
+                print("⚠️ Some content failed to save, but continuing to analysis...")
+
+            # Step 5: Analyze content with strategy routing (read from Lark, analyze, update)
+            analysis_success = self._analyze_and_update()
+
+            # Step 6: Summary
             self._print_summary(results, time.time() - start_time)
 
-            return success
+            return save_success and analysis_success
 
         except Exception as e:
             print(f"❌ Processing failed: {e}")
@@ -110,8 +116,8 @@ class TikTokMonitor:
         return results
 
     def _save_results(self, results: List[ProcessingResult]) -> bool:
-        """Save processing results to Lark with target linkage"""
-        print("\\n💾 Saving results to Lark...")
+        """Save raw scraped content to Lark (no analysis yet)"""
+        print("\\n💾 Saving raw scraped content to Lark...")
 
         total_content = 0
         new_content_count = 0
@@ -129,36 +135,129 @@ class TikTokMonitor:
 
                 new_content_count += len(new_content)
 
-                # Step 4a: AI Analysis for new content
+                # Save raw content with target linkage (NO analysis yet)
                 if new_content:
-                    print(f"🤖 Running AI analysis for {len(new_content)} new items from {result.target.target_value}...")
-
-                    # Analyze content with competitor intelligence focus
-                    analysis_results = self.ai_analyzer.batch_analyze(new_content, "competitor_intelligence")
-
-                    if analysis_results:
-                        print(f"   ✅ AI analysis completed for {len(analysis_results)} items")
-                        # Print full analysis
-                        for analysis in analysis_results:
-                            print(f"\n   📊 {analysis.content_id}: {analysis.content_type} | Strategic Score: {analysis.strategic_score}/10")
-                            print(f"   📝 Analysis: {analysis.general_analysis}")
-                            print(f"   💡 Insights: {analysis.strategic_insights}")
-                    else:
-                        print(f"   ⚠️ AI analysis failed or disabled")
-
-                    # Save content with target linkage and AI analysis
+                    print(f"   💾 Saving {len(new_content)} new items from {result.target.target_value}...")
                     success = self.lark_client.save_content(new_content, result.target.record_id)
                     if not success:
                         all_success = False
 
         print(f"   📊 Total content found: {total_content}")
-        print(f"   🆕 New content: {new_content_count}")
+        print(f"   🆕 New content saved: {new_content_count}")
 
         if new_content_count == 0:
-            print("   ✅ All content already exists")
+            print("   ✅ All content already exists in database")
             return True
 
         return all_success
+
+    def _analyze_and_update(self) -> bool:
+        """
+        Read content from Lark (with strategies populated by lookup),
+        analyze based on strategy routing, and update with results
+        """
+        from core import TikTokContent, TIKTOK_CONTENT_TABLE
+
+        print("\\n🔍 Reading content from Lark to analyze with strategy routing...")
+
+        # Fetch all content from database
+        table_id = self.lark_client._get_table_id(TIKTOK_CONTENT_TABLE)
+        path = f"/bitable/v1/apps/{self.lark_client.base_id}/tables/{table_id}/records"
+
+        try:
+            data = self.lark_client._make_request("GET", path, {"page_size": 500})
+        except Exception as e:
+            print(f"❌ Failed to read content from Lark: {e}")
+            return False
+
+        if not data.get('items'):
+            print("   ⚠️ No content in database to analyze")
+            return True
+
+        print(f"   Found {len(data['items'])} total records in database")
+
+        # Filter to content that needs analysis (no strategic_score yet)
+        to_analyze = []
+        for item in data['items']:
+            fields = item['fields']
+
+            # Skip if already analyzed (has strategic_score)
+            if fields.get('strategic_score'):
+                continue
+
+            # Decode monitoring_strategy from Lark lookup field
+            # Strategy option ID to text mapping
+            STRATEGY_MAPPING = {
+                'optC7R9ojK': 'Competitor Intelligence',
+                'optBbDImXA': 'Trend Discovery',
+                'opt94KPGSJ': 'Niche Deep-Dive'
+            }
+
+            raw_strategy = fields.get('monitoring_strategy', None)
+            strategy_text = None
+            if raw_strategy and isinstance(raw_strategy, list) and len(raw_strategy) > 0:
+                # Lark returns lookup as list - could be option ID or text
+                option_value = raw_strategy[0].get("text") if isinstance(raw_strategy[0], dict) else raw_strategy[0]
+                # Map option ID to text if needed
+                strategy_text = STRATEGY_MAPPING.get(option_value, option_value)
+
+            # Build TikTokContent object with strategy from Lark lookup
+            content = TikTokContent(
+                content_id=str(fields.get('content_id', '')),
+                target_value=fields.get('target_value', '@unknown'),
+                video_url=fields.get('video_url', {}).get('link', '') if isinstance(fields.get('video_url'), dict) else '',
+                author_username=fields.get('author_username', ''),
+                caption=fields.get('caption', ''),
+                likes=int(fields.get('likes', 0)),
+                comments=int(fields.get('comments', 0)),
+                views=int(fields.get('views', 0)),
+                engagement_rate=float(fields.get('engagement_rate', 0)),
+                video_download_url=fields.get('video_downlaod_url', {}).get('link', '') if isinstance(fields.get('video_downlaod_url'), dict) else '',
+                subtitle_url=fields.get('subtitle_url', {}).get('link', '') if isinstance(fields.get('subtitle_url'), dict) else '',
+                monitoring_strategy=strategy_text  # ✅ Strategy from Lark lookup
+            )
+
+            # Store record_id for updating later
+            content._record_id = item['record_id']
+            to_analyze.append(content)
+
+        if not to_analyze:
+            print("   ✅ All content already analyzed!")
+            return True
+
+        print(f"   🎯 {len(to_analyze)} items need analysis\\n")
+
+        # Run strategy-aware batch analysis
+        print("🤖 Running AI analysis with strategy routing...")
+        analysis_results = self.ai_analyzer.batch_analyze(to_analyze)
+
+        if not analysis_results:
+            print("   ⚠️ No analysis results (all content skipped or analysis disabled)")
+            # Still return True - not an error, just nothing to analyze
+            return True
+
+        print(f"\\n   ✅ AI analysis completed for {len(analysis_results)} items")
+
+        # Print full analysis results
+        for analysis in analysis_results:
+            print(f"\\n   📊 {analysis.content_id}: {analysis.content_type} | Strategic Score: {analysis.strategic_score}/10")
+            print(f"   📝 Analysis: {analysis.general_analysis[:100]}...")
+            print(f"   💡 Insights: {analysis.strategic_insights[:100]}...")
+
+        # Update Lark with analysis results
+        print("\\n💾 Updating Lark with analysis results...")
+
+        update_success = True
+        for content in to_analyze:
+            # Only update if this content was analyzed (has strategic_score)
+            if content.strategic_score is not None:
+                record_id = getattr(content, '_record_id', None)
+                if record_id:
+                    success = self.lark_client.update_content(record_id, content)
+                    if not success:
+                        update_success = False
+
+        return update_success
 
     def _print_summary(self, results: List[ProcessingResult], total_time: float):
         """Print processing summary"""
