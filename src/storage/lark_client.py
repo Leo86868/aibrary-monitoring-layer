@@ -151,6 +151,9 @@ class LarkClient:
         if content.strategic_insights:
             fields["strategic_insights"] = str(content.strategic_insights)
 
+        if content.niche_category:
+            fields["niche_category"] = str(content.niche_category)
+
         if not fields:
             print(f"⚠️ No fields to update for content {content.content_id}")
             return False
@@ -213,6 +216,8 @@ class LarkClient:
                 fields["content_type"] = str(content.content_type)
             if content.strategic_insights:
                 fields["strategic_insights"] = str(content.strategic_insights)
+            if content.niche_category:
+                fields["niche_category"] = str(content.niche_category)
 
             # Only add URL fields if they have valid URLs
             if content.video_download_url:

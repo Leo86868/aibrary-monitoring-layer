@@ -35,14 +35,29 @@ def main():
     total = len(data['items'])
     print(f"   Found {total} total records")
 
-    # Filter to content that needs analysis (missing competitor_intel_analysis)
+    # Strategy mapping for decoding
+    STRATEGY_MAP = {
+        "optC7R9ojK": "Competitor Intelligence",
+        "optBbDImXA": "Trend Discovery",
+        "opt94KPGSJ": "Niche Deep-Dive"
+    }
+
+    # Filter to content that needs analysis (missing Analysis field)
     to_analyze = []
     for item in data['items']:
         fields = item['fields']
 
         # Check if already analyzed
-        if fields.get('competitor_intel_analysis'):
+        if fields.get('Analysis'):
             continue
+
+        # Decode monitoring_strategy from lookup field
+        raw_strategy = fields.get('monitoring_strategy', None)
+        strategy_text = None
+        if raw_strategy and isinstance(raw_strategy, list) and len(raw_strategy) > 0:
+            # Lark returns lookup as list with option IDs
+            strategy_id = raw_strategy[0]
+            strategy_text = STRATEGY_MAP.get(strategy_id, None)
 
         # Build TikTokContent object
         content = TikTokContent(
@@ -55,7 +70,9 @@ def main():
             comments=int(fields.get('comments', 0)),
             views=int(fields.get('views', 0)),
             engagement_rate=float(fields.get('engagement_rate', 0)),
-            video_download_url=fields.get('video_downlaod_url', {}).get('link', '')  # Note: typo in field name
+            video_download_url=fields.get('video_downlaod_url', {}).get('link', ''),  # Note: typo in field name
+            subtitle_url=fields.get('subtitle_url', {}).get('link', ''),
+            monitoring_strategy=strategy_text  # Add monitoring strategy
         )
         to_analyze.append(content)
 

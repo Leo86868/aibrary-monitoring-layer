@@ -68,6 +68,13 @@ class TikTokContent:
     # Used for routing to strategy-specific AI analysis prompts
     monitoring_strategy: Optional[str] = None
 
+    # Niche Category (Niche Deep-Dive strategy only)
+    # AI-assigned category for Niche Deep-Dive content
+    # Values: "Podcasts & Audio Learning", "Books & Reading", "Productivity & Habits",
+    #         "AI in Education", "Upskilling & Career", "Knowledge Management", "Other"
+    # Used for grid view segmentation and filtering
+    niche_category: Optional[str] = None
+
     def __post_init__(self):
         if self.discovered_date is None:
             self.discovered_date = datetime.now()

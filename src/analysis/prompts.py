@@ -70,6 +70,79 @@ FORMAT YOUR RESPONSE:
 YOU MUST provide at least 2 insights. Do not stop at 1.
 """
 
+# Niche Deep-Dive Analysis for Adjacent Niche Content Strategies
+NICHE_DEEPDIVE_PROMPT = """
+IMPORTANT: You MUST provide EXACTLY 2-3 strategic insights (not 1, not 0). This is a strict requirement.
+
+CONTEXT: AIbrary (aibrary.ai) is an AI-powered learning platform that turns books into personalized podcasts and interactive learning experiences. We're analyzing adjacent niche creators (not direct competitors) to learn content strategies from podcasts, books, productivity, and learning spaces.
+
+Analyze this TikTok content in two stages:
+
+CONTENT:
+Creator: {author_username}
+Caption: {caption}
+Subtitles: {subtitles}
+Performance: {likes} likes, {comments} comments, {views} views
+
+---
+
+STAGE 1 - What is this content actually about?
+Describe the topic, message, and format. Focus on the content strategy, hook type, and format style used.
+
+STAGE 2 - Content Strategy Analysis
+
+**Score (0-10):** Rate based on content strategy execution quality (hooks, format, storytelling, engagement tactics).
+- 9-10: Exceptional - masterful content strategy worth deep study
+- 7-8: Strong - effective tactics with clear learnings for AIbrary
+- 5-6: Solid - decent execution with some useful elements
+- 3-4: Weak - basic approach with limited takeaways
+- 1-2: Poor - low-effort or ineffective strategy
+- 0: No value
+
+Be critical. Most content scores 4-7. Reserve 9-10 for truly exceptional content strategies.
+
+**Niche Category:** Pick EXACTLY ONE category that fits best:
+Podcasts & Audio Learning | Books & Reading | Productivity & Habits | AI in Education | Upskilling & Career | Knowledge Management | Other
+
+**Strategic Insights:** Write EXACTLY 2-3 numbered insights (minimum 2, maximum 3) about CONTENT STRATEGIES and TACTICS used in this adjacent niche that AIbrary could adapt. Each insight: what tactic → why it works → how AIbrary could test it. Keep it brief and actionable.
+
+Focus on:
+- Hook types (curiosity gaps, problem statements, storytelling openings)
+- Format styles (talking head vs B-roll, text overlays, visual metaphors)
+- Engagement tactics (community building, challenges, user participation)
+- Trending topics in this niche space
+
+Good examples (brief, strategy-focused):
+- "Opens with '3 books that changed my life' list format - creates immediate curiosity and saves time. AIbrary could test 'top 3 books for X goal' hooks targeting specific outcomes"
+- "Uses text overlay to highlight key book quotes while speaking - reinforces message via dual channels. AIbrary could layer quotes over podcast visuals"
+- "Creates urgency with 'reading challenge' framing - turns content consumption into a game. AIbrary could try '7-day book mastery challenge' campaigns"
+
+Bad examples (avoid these):
+- "**Enhanced Reading Experience:** This creator emphasizes the emotional impact of reading..." (too long, bold header, describes content not strategy)
+- "AIbrary could add more book summaries to the platform" (product feature, not content tactic)
+- "Uses good lighting and clear audio" (production quality, not content strategy)
+
+---
+
+FORMAT YOUR RESPONSE:
+
+**STAGE 1 - Content Analysis:**
+[Your analysis here]
+
+**STAGE 2 - Strategic Analysis:**
+
+**Score:** X/10
+
+**Niche Category:** [category - must be one of the 7 options]
+
+**Strategic Insights:**
+1. [First insight - REQUIRED]
+2. [Second insight - REQUIRED]
+3. [Third insight - OPTIONAL but encouraged]
+
+YOU MUST provide at least 2 insights. Do not stop at 1.
+"""
+
 # Legacy prompt for general analysis (keeping for backward compatibility)
 VIDEO_ANALYSIS_PROMPT = """
 Analyze this TikTok video and provide insights on:

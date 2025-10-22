@@ -23,9 +23,10 @@ import google.generativeai as genai
 
 from core import TikTokContent, GEMINI_API_KEY
 from core.models import AnalysisResult
-from .prompts import COMPETITOR_INTELLIGENCE_PROMPT, VIDEO_ANALYSIS_PROMPT
+from .prompts import COMPETITOR_INTELLIGENCE_PROMPT, NICHE_DEEPDIVE_PROMPT, VIDEO_ANALYSIS_PROMPT
 from .parsers import (
     parse_competitor_intelligence_response,
+    parse_niche_deepdive_response,
     parse_general_analysis_response,
     parse_subtitle_content
 )
@@ -68,8 +69,7 @@ class VideoAnalyzer:
                 print(f"   ⏭️  {content.content_id} (Trend Discovery) - skipping (prompt not implemented)")
                 return None
             elif strategy == "Niche Deep-Dive":
-                print(f"   ⏭️  {content.content_id} (Niche Deep-Dive) - skipping (prompt not implemented)")
-                return None
+                return self._analyze_niche_deepdive(content)
             elif strategy is None or strategy == "":
                 print(f"   ⚠️  {content.content_id} - No monitoring strategy, skipping analysis")
                 return None
@@ -144,6 +144,81 @@ Pay attention to:
 
             # Parse and structure the response for competitor intelligence
             result = parse_competitor_intelligence_response(content.content_id, response.text)
+
+            return result
+
+        finally:
+            # Clean up temporary video file
+            if video_file and os.path.exists(video_file):
+                try:
+                    os.remove(video_file)
+                    print(f"   🗑️ Cleaned up temporary video file")
+                except Exception as e:
+                    print(f"   ⚠️ Failed to cleanup video file: {e}")
+
+    def _analyze_niche_deepdive(self, content: TikTokContent) -> Optional[AnalysisResult]:
+        """Analyze content for niche deep-dive insights (content strategies from adjacent niches)"""
+
+        # Get subtitle text if available
+        subtitles = ""
+        if content.subtitle_url:
+            subtitles = self._fetch_subtitles(content.subtitle_url)
+
+        # Try to download and analyze video if available
+        video_file = None
+        video_available = False
+
+        if content.video_download_url:
+            print(f"   📥 Downloading video from {content.video_download_url[:60]}...")
+            video_file = self._download_video(content.video_download_url, content.content_id)
+            if video_file:
+                print(f"   ✅ Video downloaded: {video_file}")
+                video_available = True
+            else:
+                print(f"   ⚠️ Video download failed, falling back to text-only analysis")
+
+        try:
+            # Format the niche deep-dive prompt
+            prompt_text = NICHE_DEEPDIVE_PROMPT.format(
+                author_username=content.author_username or "Unknown",
+                caption=content.caption or "No caption provided",
+                subtitles=subtitles or "No subtitles available",
+                likes=content.likes or 0,
+                comments=content.comments or 0,
+                views=content.views or 0
+            )
+
+            # Add video analysis context to prompt
+            if video_available:
+                prompt_text = f"""You are analyzing a TikTok VIDEO (visual + audio content).
+
+Pay attention to:
+- Visual presentation and editing style
+- On-screen text and graphics
+- Speaker delivery and energy
+- Content strategy techniques (hooks, format, engagement tactics)
+- Trending topics and themes in this niche space
+
+{prompt_text}"""
+
+            # Generate analysis with video if available
+            if video_available and video_file:
+                print(f"   📤 Uploading video to Gemini...")
+                # Read video file as bytes
+                with open(video_file, 'rb') as f:
+                    video_data = f.read()
+
+                print(f"   🎬 Analyzing video with AI (this may take 60-90 seconds)...")
+                # Use Part API for inline video data
+                video_part = {"mime_type": "video/mp4", "data": video_data}
+                response = self.model.generate_content([video_part, prompt_text])
+            else:
+                # Text-only analysis
+                print(f"   📝 Analyzing text only...")
+                response = self.model.generate_content(prompt_text)
+
+            # Parse and structure the response for niche deep-dive
+            result = parse_niche_deepdive_response(content.content_id, response.text)
 
             return result
 
@@ -285,8 +360,14 @@ Pay attention to:
 
         # Update strategic analysis fields (Stage 2) - for strategic columns in database
         content.strategic_score = result.strategic_score
-        content.content_type = result.content_type
         content.strategic_insights = result.strategic_insights
+
+        # For Niche Deep-Dive, result.content_type contains niche_category
+        if content.monitoring_strategy == "Niche Deep-Dive":
+            content.niche_category = result.content_type
+            content.content_type = None  # Don't set content_type for Niche Deep-Dive
+        else:
+            content.content_type = result.content_type
 
 
 # ==============================================================================
