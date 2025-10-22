@@ -13,6 +13,7 @@ from core import MonitoringTarget, ProcessingResult
 from storage import LarkClient
 from scraping import ProcessorFactory
 from analysis import VideoAnalyzer, analyze_new_content
+from filtering import build_rule_index, filter_content_list
 
 class TikTokMonitor:
     """Main orchestrator for TikTok monitoring system"""
@@ -21,6 +22,7 @@ class TikTokMonitor:
         self.lark_client = LarkClient()
         self.processor_factory = ProcessorFactory()
         self.ai_analyzer = VideoAnalyzer()
+        self.rule_index = None  # Loaded at runtime
 
     def run(self) -> bool:
         """Run the complete monitoring pipeline"""
@@ -33,6 +35,12 @@ class TikTokMonitor:
             if not targets:
                 print("⚠️ No active targets found")
                 return True
+
+            # Step 1.5: Load filter rules and build index (T013, T014)
+            print("\n🔧 Loading quality filter rules...")
+            filter_rules = self.lark_client.get_filter_rules()
+            self.rule_index = build_rule_index(filter_rules)
+            print(f"   ✅ Rule index built with {len(self.rule_index)} rule(s)")
 
             # Step 2: Filter to supported targets
             supported_targets, unsupported_targets = self._filter_targets(targets)
@@ -121,6 +129,7 @@ class TikTokMonitor:
 
         total_content = 0
         new_content_count = 0
+        total_filtered_out = 0
         all_success = True
 
         for result in results:
@@ -133,6 +142,30 @@ class TikTokMonitor:
                     if not self.lark_client.content_exists(content.content_id):
                         new_content.append(content)
 
+                # Apply quality filtering (T015)
+                if new_content and self.rule_index is not None:
+                    filtered_content, metrics = filter_content_list(
+                        new_content,
+                        result.target,
+                        self.rule_index
+                    )
+
+                    # Report filtering metrics (T016)
+                    if metrics.rule_used:
+                        print(f"   🔍 Quality filtering for {result.target.target_value}:")
+                        print(f"      {metrics.total_scraped} scraped → {metrics.saved} saved ({metrics.filtered_out} filtered out)")
+                        print(f"      Rule: {metrics.rule_used.monitoring_strategy}")
+                    else:
+                        print(f"   ℹ️  No matching filter rule for {result.target.target_value}, saving all {len(new_content)} items")
+
+                    # Replace new_content with filtered_content
+                    new_content = filtered_content
+                    total_filtered_out += metrics.filtered_out
+                else:
+                    # No filtering applied (no rule index or no new content)
+                    if new_content:
+                        print(f"   ℹ️  No filter rules loaded, saving all {len(new_content)} items from {result.target.target_value}")
+
                 new_content_count += len(new_content)
 
                 # Save raw content with target linkage (NO analysis yet)
@@ -142,7 +175,9 @@ class TikTokMonitor:
                     if not success:
                         all_success = False
 
-        print(f"   📊 Total content found: {total_content}")
+        print(f"\\n   📊 Total content found: {total_content}")
+        if total_filtered_out > 0:
+            print(f"   🚫 Filtered out: {total_filtered_out}")
         print(f"   🆕 New content saved: {new_content_count}")
 
         if new_content_count == 0:

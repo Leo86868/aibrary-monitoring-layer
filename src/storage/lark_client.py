@@ -7,7 +7,7 @@ import requests
 import time
 from typing import List, Dict, Any, Optional
 from core import (
-    MonitoringTarget, TikTokContent,
+    MonitoringTarget, TikTokContent, FilterRule,
     LARK_APP_ID, LARK_APP_SECRET, LARK_BASE_ID,
     MONITORING_TARGETS_TABLE, TIKTOK_CONTENT_TABLE
 )
@@ -92,11 +92,16 @@ class LarkClient:
                 continue
 
             # Decode monitoring_strategy from Lark single-select field
+            # Can be returned as plain string or list depending on API version
             raw_strategy = fields.get("monitoring_strategy", None)
             strategy_text = None
-            if raw_strategy and isinstance(raw_strategy, list) and len(raw_strategy) > 0:
-                # Lark returns single-select as list with text value
-                strategy_text = raw_strategy[0].get("text") if isinstance(raw_strategy[0], dict) else raw_strategy[0]
+            if raw_strategy:
+                if isinstance(raw_strategy, str):
+                    # Direct string value
+                    strategy_text = raw_strategy
+                elif isinstance(raw_strategy, list) and len(raw_strategy) > 0:
+                    # List format - extract text value
+                    strategy_text = raw_strategy[0].get("text") if isinstance(raw_strategy[0], dict) else raw_strategy[0]
 
             target = MonitoringTarget(
                 record_id=item["record_id"],
@@ -111,6 +116,98 @@ class LarkClient:
             targets.append(target)
 
         return targets
+
+    def get_filter_rules(self) -> List[FilterRule]:
+        """
+        Fetch active filter rules from Lark Base Filter_Rules table.
+
+        Returns:
+            List of active FilterRule objects (active=True)
+            Empty list if table doesn't exist or on API error (fail-open)
+        """
+        try:
+            table_id = self._get_table_id("Filter_Rules")
+            path = f"/bitable/v1/apps/{self.base_id}/tables/{table_id}/records?page_size=500"
+
+            data = self._make_request("GET", path)
+            rules = []
+
+            for item in data.get("items", []):
+                fields = item["fields"]
+
+                # Only include active rules
+                if not fields.get("active", False):
+                    continue
+
+                # Decode monitoring_strategy from Lark single-select field
+                # Can be returned as plain string or list depending on API version
+                raw_strategy = fields.get("monitoring_strategy", None)
+                strategy_text = None
+                if raw_strategy:
+                    if isinstance(raw_strategy, str):
+                        # Direct string value
+                        strategy_text = raw_strategy
+                    elif isinstance(raw_strategy, list) and len(raw_strategy) > 0:
+                        # List format - extract text value
+                        strategy_text = raw_strategy[0].get("text") if isinstance(raw_strategy[0], dict) else raw_strategy[0]
+
+                if not strategy_text:
+                    print(f"⚠️ Skipping filter rule with no strategy")
+                    continue
+
+                # Decode target_type from Lark single-select field (optional)
+                raw_type = fields.get("target_type", None)
+                type_text = None
+                if raw_type:
+                    if isinstance(raw_type, str):
+                        # Direct string value
+                        type_text = raw_type
+                    elif isinstance(raw_type, list) and len(raw_type) > 0:
+                        # List format - extract text value
+                        type_text = raw_type[0].get("text") if isinstance(raw_type[0], dict) else raw_type[0]
+
+                # Get target_value (optional text field)
+                target_value = fields.get("target_value", "")
+                if target_value == "":
+                    target_value = None
+
+                # Get threshold values (optional number fields)
+                min_likes = fields.get("min_likes", None)
+                if min_likes is not None:
+                    min_likes = int(min_likes)
+
+                min_views = fields.get("min_views", None)
+                if min_views is not None:
+                    min_views = int(min_views)
+
+                min_engagement_rate = fields.get("min_engagement_rate", None)
+                if min_engagement_rate is not None:
+                    min_engagement_rate = float(min_engagement_rate)
+
+                max_age_days = fields.get("max_age_days", None)
+                if max_age_days is not None:
+                    max_age_days = int(max_age_days)
+
+                # Create FilterRule
+                rule = FilterRule(
+                    monitoring_strategy=strategy_text,
+                    target_type=type_text,
+                    target_value=target_value,
+                    min_likes=min_likes,
+                    min_views=min_views,
+                    min_engagement_rate=min_engagement_rate,
+                    max_age_days=max_age_days,
+                    active=True  # Already filtered for active=True above
+                )
+                rules.append(rule)
+
+            print(f"📋 Loaded {len(rules)} active filter rule(s)")
+            return rules
+
+        except Exception as e:
+            print(f"⚠️ Failed to load filter rules: {e}")
+            print(f"   Continuing with no filtering (fail-open)")
+            return []
 
     def content_exists(self, content_id: str) -> Optional[str]:
         """

@@ -94,6 +94,27 @@ class ProcessingResult:
     error_message: Optional[str] = None
     processing_time: Optional[float] = None
 
+@dataclass(frozen=True)
+class FilterRule:
+    """
+    Represents a quality filtering rule with hierarchical matching.
+
+    Hierarchical matching levels:
+    - Level 3 (most specific): monitoring_strategy + target_type + target_value
+    - Level 2 (mid-specific): monitoring_strategy + target_type + None
+    - Level 1 (least specific): monitoring_strategy + None + None
+
+    Content passes filter if ANY threshold is met (OR logic).
+    """
+    monitoring_strategy: str  # Required: "Competitor Intelligence", "Trend Discovery", "Niche Deep-Dive"
+    target_type: Optional[str] = None  # Optional: "profile", "hashtag", "search" - None = wildcard
+    target_value: Optional[str] = None  # Optional: "@blinkist", "#book" - None = wildcard
+    min_likes: Optional[int] = None  # Minimum likes threshold
+    min_views: Optional[int] = None  # Minimum views threshold
+    min_engagement_rate: Optional[float] = None  # Minimum engagement rate % (e.g., 2.5 for 2.5%)
+    max_age_days: Optional[int] = None  # Maximum content age in days
+    active: bool = True  # Whether this rule is enabled
+
 # ==============================================================================
 # AI ANALYSIS MODELS
 # ==============================================================================
