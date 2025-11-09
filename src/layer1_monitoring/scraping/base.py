@@ -5,7 +5,7 @@ Abstract base class for all content processors
 
 from abc import ABC, abstractmethod
 from typing import List
-from core.models import MonitoringTarget, TikTokContent, ProcessingResult
+from shared.core.models import MonitoringTarget, TikTokContent, ProcessingResult
 
 
 class BaseProcessor(ABC):

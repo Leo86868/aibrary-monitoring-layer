@@ -7,7 +7,9 @@ import os
 from dotenv import load_dotenv
 
 # Load .env from config directory
-config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config')
+# Path: src/shared/core/config.py -> need 4 levels up to reach project root
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+config_dir = os.path.join(project_root, 'config')
 env_path = os.path.join(config_dir, '.env')
 load_dotenv(env_path)
 

@@ -7,7 +7,8 @@ from .models import (
     MonitoringTarget,
     TikTokContent,
     ProcessingResult,
-    AnalysisResult
+    AnalysisResult,
+    FilterRule
 )
 
 from .config import (
@@ -30,6 +31,7 @@ __all__ = [
     'TikTokContent',
     'ProcessingResult',
     'AnalysisResult',
+    'FilterRule',
     # Config
     'LARK_APP_ID',
     'LARK_APP_SECRET',

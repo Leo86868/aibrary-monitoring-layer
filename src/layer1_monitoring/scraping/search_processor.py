@@ -3,7 +3,7 @@ AIbrary TikTok Monitoring System - Search Processor
 Processor for TikTok keyword searches - Phase 3
 """
 
-from core import MonitoringTarget, ProcessingResult
+from shared.core import MonitoringTarget, ProcessingResult
 from .base import BaseProcessor
 
 
