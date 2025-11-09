@@ -9,11 +9,11 @@ import time
 from typing import List
 from datetime import datetime
 
-from core import MonitoringTarget, ProcessingResult
-from storage import LarkClient
-from scraping import ProcessorFactory
-from analysis import VideoAnalyzer, analyze_new_content
-from filtering import build_rule_index, filter_content_list
+from shared.core import MonitoringTarget, ProcessingResult
+from shared.storage import LarkClient
+from layer1_monitoring.scraping import ProcessorFactory
+from layer2_analysis import VideoAnalyzer, analyze_new_content
+from layer1_monitoring.filtering import build_rule_index, filter_content_list
 
 class TikTokMonitor:
     """Main orchestrator for TikTok monitoring system"""
@@ -191,7 +191,7 @@ class TikTokMonitor:
         Read content from Lark (with strategies populated by lookup),
         analyze based on strategy routing, and update with results
         """
-        from core import TikTokContent, TIKTOK_CONTENT_TABLE
+        from shared.core import TikTokContent, TIKTOK_CONTENT_TABLE
 
         print("\\n🔍 Reading content from Lark to analyze with strategy routing...")
 

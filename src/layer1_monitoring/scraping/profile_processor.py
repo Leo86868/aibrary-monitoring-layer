@@ -1,6 +1,6 @@
 """
-AIbrary TikTok Monitoring System - Hashtag Processor
-Processor for TikTok hashtags (#hashtag)
+AIbrary TikTok Monitoring System - Profile Processor
+Processor for TikTok user profiles (@username)
 """
 
 import time
@@ -9,12 +9,12 @@ import requests
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from core import MonitoringTarget, TikTokContent, ProcessingResult, APIFY_TOKEN, TIKTOK_ACTOR_ID, DEFAULT_TIMEOUT
+from shared.core import MonitoringTarget, TikTokContent, ProcessingResult, APIFY_TOKEN, TIKTOK_ACTOR_ID, DEFAULT_TIMEOUT
 from .base import BaseProcessor
 
 
-class HashtagProcessor(BaseProcessor):
-    """Processor for TikTok hashtags (#hashtag)"""
+class ProfileProcessor(BaseProcessor):
+    """Processor for TikTok user profiles (@username)"""
 
     def __init__(self):
         if not APIFY_TOKEN:
@@ -22,15 +22,15 @@ class HashtagProcessor(BaseProcessor):
         self.token = APIFY_TOKEN.strip()
 
     def can_process(self, target: MonitoringTarget) -> bool:
-        """Check if this is a hashtag target"""
-        return target.is_hashtag and target.platform == "tiktok"
+        """Check if this is a profile target"""
+        return target.is_profile and target.platform == "tiktok"
 
     def process(self, target: MonitoringTarget, use_cached_data: bool = True) -> ProcessingResult:
-        """Process TikTok hashtag target using synchronous HTTP API"""
+        """Process TikTok profile target using synchronous HTTP API or cached data"""
         start_time = time.time()
 
         try:
-            print(f"🏷️ Processing hashtag: {target.target_value}")
+            print(f"🎯 Processing profile: {target.target_value}")
 
             # Try to get recent data first if use_cached_data is True
             dataset_items = None
@@ -61,34 +61,29 @@ class HashtagProcessor(BaseProcessor):
             content_list = self._process_dataset_items(dataset_items, target)
 
             processing_time = time.time() - start_time
-            print(f"✅ Hashtag {target.target_value}: Found {len(content_list)} videos in {processing_time:.1f}s")
+            print(f"✅ Profile {target.target_value}: Found {len(content_list)} videos in {processing_time:.1f}s")
 
             return self._create_success_result(target, content_list, processing_time)
 
         except Exception as e:
             processing_time = time.time() - start_time
-            error_msg = f"Failed to process hashtag {target.target_value}: {str(e)}"
+            error_msg = f"Failed to process profile {target.target_value}: {str(e)}"
             print(f"❌ {error_msg}")
             return self._create_error_result(target, error_msg, processing_time)
 
     def _prepare_apify_input(self, target: MonitoringTarget) -> dict:
-        """Prepare input configuration for Apify TikTok scraper (hashtag mode)"""
-        # Remove # prefix if present - Apify expects hashtag without #
-        hashtag = target.target_value.lstrip('#') if target.target_value else ""
+        """Prepare input configuration for Apify TikTok scraper"""
+        username = target.target_value.lstrip('@')
 
         return {
-            "excludePinnedPosts": False,
-            "hashtags": [hashtag],  # Hashtag without # prefix
-            "leastDiggs": 5000,  # Minimum engagement filter
-            "proxyCountryCode": "US",
+            "profiles": [f"@{username}"],
             "resultsPerPage": target.results_limit,
-            "scrapeRelatedVideos": False,
-            "shouldDownloadAvatars": False,
-            "shouldDownloadCovers": False,
-            "shouldDownloadMusicCovers": False,
-            "shouldDownloadSlideshowImages": False,
-            "shouldDownloadSubtitles": True,  # Download subtitles for AI analysis
-            "shouldDownloadVideos": True  # Download videos for AI analysis
+            "profileScrapeSections": ["videos"],  # Only scrape videos section
+            "shouldDownloadVideos": True,  # Download videos for AI analysis
+            "shouldDownloadCovers": True,  # Download thumbnails for visual reference
+            "shouldDownloadSubtitles": True,  # Download subtitles to avoid needing Whisper transcription
+            "shouldDownloadSlideshowImages": False,  # Filter out photo carousels, only get actual videos
+            "proxyConfiguration": {"useApifyProxy": True}
         }
 
     def _process_dataset_items(self, dataset_items, target: MonitoringTarget) -> List[TikTokContent]:
@@ -116,7 +111,7 @@ class HashtagProcessor(BaseProcessor):
         return content_list
 
     def _convert_item_to_content(self, item: dict, target: MonitoringTarget) -> TikTokContent:
-        """Convert Apify result item to TikTokContent (same as ProfileProcessor)"""
+        """Convert Apify result item to TikTokContent"""
         content_id = item.get("id") or item.get("videoId") or self._extract_video_id(item.get("webVideoUrl", ""))
 
         if not content_id:
@@ -132,14 +127,19 @@ class HashtagProcessor(BaseProcessor):
         if author_username:
             author_username = author_username.lstrip('@')
 
-        # Extract video download URLs and media data
+        # Extract video download URLs and media data from actual response structure
         video_meta = item.get("videoMeta", {})
 
-        # Get the downloaded video URL (watermark-free version)
+        # Get the downloaded video URL (watermark-free version) from mediaUrls array
         media_urls = item.get("mediaUrls", [])
         video_download_url = media_urls[0] if media_urls else ""
 
-        # Get subtitle URL from videoMeta.subtitleLinks
+        # Debug: Print what we got
+        print(f"   🔍 DEBUG - Content {content_id}:")
+        print(f"      mediaUrls: {media_urls}")
+        print(f"      video_download_url: {video_download_url}")
+
+        # Get subtitle URL from videoMeta.subtitleLinks (first English or available language)
         subtitle_links = video_meta.get("subtitleLinks", [])
         subtitle_url = ""
         if subtitle_links:
@@ -152,12 +152,12 @@ class HashtagProcessor(BaseProcessor):
             if not subtitle_url and subtitle_links:
                 subtitle_url = subtitle_links[0].get("downloadLink", "")
 
-        # Extract engagement metrics
+        # Extract engagement metrics from Apify response
         likes = item.get("diggCount", 0)
         comments = item.get("commentCount", 0)
         views = item.get("playCount", 0)
 
-        # Parse the numbers
+        # Parse the numbers (they might be strings with K/M notation)
         likes = self._parse_number(likes)
         comments = self._parse_number(comments)
         views = self._parse_number(views)
@@ -174,7 +174,7 @@ class HashtagProcessor(BaseProcessor):
             engagement_rate=0.0  # Will be calculated when saving
         )
 
-        # Store additional media URLs
+        # Store additional media URLs as attributes (will be saved to database)
         content.video_download_url = video_download_url
         content.subtitle_url = subtitle_url
 
@@ -192,13 +192,70 @@ class HashtagProcessor(BaseProcessor):
         return video_url.split('/')[-1] if '/' in video_url else video_url
 
     def _get_recent_run_data(self, target: MonitoringTarget) -> Optional[list]:
-        """Get data from the most recent Apify run (hashtag filtering not implemented - always returns None)"""
-        # Note: Hashtag filtering from recent runs is complex because hashtag data
-        # is not easily filterable from mixed results. For simplicity, always run fresh actor.
-        return None
+        """Get data from the most recent Apify run instead of running a new one"""
+        try:
+            # Get list of recent runs for this actor
+            runs_url = f"https://api.apify.com/v2/acts/{TIKTOK_ACTOR_ID}/runs"
+
+            response = requests.get(
+                runs_url,
+                params={"token": self.token, "limit": 10, "status": "SUCCEEDED"},
+                timeout=30
+            )
+            response.raise_for_status()
+            runs_data = response.json()
+
+            # Find the most recent successful run
+            if not runs_data.get("data", {}).get("items"):
+                return None
+
+            # Get the most recent run
+            recent_run = runs_data["data"]["items"][0]
+            run_id = recent_run["id"]
+
+            # Check if it's recent enough (within last hour)
+            run_time = datetime.fromisoformat(recent_run["finishedAt"].replace('Z', '+00:00'))
+            if datetime.now().astimezone() - run_time > timedelta(hours=1):
+                print(f"⏰ Most recent run is {run_time}, too old - will run fresh actor")
+                return None
+
+            print(f"📊 Found recent run from {run_time.strftime('%H:%M:%S')}, getting dataset...")
+
+            # Get dataset items from the recent run
+            dataset_url = f"https://api.apify.com/v2/acts/{TIKTOK_ACTOR_ID}/runs/{run_id}/dataset/items"
+
+            response = requests.get(
+                dataset_url,
+                params={"token": self.token},
+                timeout=60
+            )
+            response.raise_for_status()
+
+            dataset_items = response.json()
+
+            # Filter for the specific profile we want
+            username = target.target_value.lstrip('@')
+            filtered_items = []
+
+            for item in dataset_items:
+                # Check if this item is from our target profile
+                author_meta = item.get("authorMeta", {})
+                if author_meta.get("name", "").lower() == username.lower():
+                    filtered_items.append(item)
+
+            if filtered_items:
+                print(f"✅ Found {len(filtered_items)} items for {target.target_value} in recent run")
+                return filtered_items[:target.results_limit]  # Limit to requested amount
+            else:
+                print(f"⚠️ No items found for {target.target_value} in recent run")
+                return None
+
+        except Exception as e:
+            print(f"⚠️ Failed to get recent run data: {e}")
+            return None
 
     def _parse_number(self, value) -> int:
-        """Parse number from various formats (K, M, B notation)"""
+        """Parse number from various formats"""
         if isinstance(value, int):
             return value
 

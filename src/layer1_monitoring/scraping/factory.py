@@ -4,7 +4,7 @@ Factory for creating appropriate processors for different target types
 """
 
 from typing import List, Optional
-from core import MonitoringTarget
+from shared.core import MonitoringTarget
 from .base import BaseProcessor
 from .profile_processor import ProfileProcessor
 from .hashtag_processor import HashtagProcessor

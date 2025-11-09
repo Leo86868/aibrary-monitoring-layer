@@ -6,7 +6,7 @@ Apply filter rules to content and track metrics
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict
 from datetime import datetime
-from core import TikTokContent, FilterRule, MonitoringTarget
+from shared.core import TikTokContent, FilterRule, MonitoringTarget
 from .rule_matcher import find_matching_rule
 
 

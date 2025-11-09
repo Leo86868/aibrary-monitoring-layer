@@ -21,8 +21,8 @@ import os
 from typing import Optional, List, Dict, Any
 import google.generativeai as genai
 
-from core import TikTokContent, GEMINI_API_KEY
-from core.models import AnalysisResult
+from shared.core import TikTokContent, GEMINI_API_KEY
+from shared.core.models import AnalysisResult
 from .prompts import COMPETITOR_INTELLIGENCE_PROMPT, NICHE_DEEPDIVE_PROMPT, VIDEO_ANALYSIS_PROMPT
 from .parsers import (
     parse_competitor_intelligence_response,

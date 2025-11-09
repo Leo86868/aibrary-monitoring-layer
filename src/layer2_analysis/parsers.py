@@ -4,7 +4,7 @@ Parse AI model responses into structured data
 """
 
 import re
-from core.models import AnalysisResult
+from shared.core.models import AnalysisResult
 
 
 def parse_competitor_intelligence_response(content_id: str, response_text: str) -> AnalysisResult:

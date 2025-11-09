@@ -6,7 +6,7 @@ Client for interacting with Lark Base API
 import requests
 import time
 from typing import List, Dict, Any, Optional
-from core import (
+from shared.core import (
     MonitoringTarget, TikTokContent, FilterRule,
     LARK_APP_ID, LARK_APP_SECRET, LARK_BASE_ID,
     MONITORING_TARGETS_TABLE, TIKTOK_CONTENT_TABLE

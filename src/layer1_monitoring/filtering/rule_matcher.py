@@ -4,7 +4,7 @@ Hierarchical rule matching for quality filtering
 """
 
 from typing import List, Dict, Tuple, Optional
-from core import FilterRule, TikTokContent, MonitoringTarget
+from shared.core import FilterRule, TikTokContent, MonitoringTarget
 
 
 def build_rule_index(rules: List[FilterRule]) -> Dict[Tuple[str, Optional[str], Optional[str]], FilterRule]:
